@@ -25,8 +25,13 @@ Try the deployed prototype at <https://rudragarg-ds.github.io/fakekhushbu/>.
 ## Screenshots
 
 ![फेकsmell home screen](docs/screenshot-home.png)
+Home screen with the simulated sensor introduction and scan entry point.
 
 ![फेकsmell result screen](docs/screenshot-result.png)
+Analyzer result with the sensor trace, channel readings, and scent notes.
+
+![Why it matters and roadmap sections](docs/screenshot-why-it-matters.png)
+Use cases and the roadmap from simulation to a calibrated sensor model.
 
 ## Demo features
 

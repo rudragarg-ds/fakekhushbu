@@ -542,14 +542,13 @@ function canvasContext() {
 
 function drawSensorTrace(values, progress) {
     const { context, width, height } = canvasContext();
-    const green = getComputedStyle(document.documentElement).getPropertyValue("--green").trim();
     const orange = getComputedStyle(document.documentElement).getPropertyValue("--orange").trim();
     const padding = 22;
     const chartWidth = width - padding * 2;
     const chartHeight = height - padding * 2;
 
     context.clearRect(0, 0, width, height);
-    context.strokeStyle = "#67936c";
+    context.strokeStyle = "rgba(255,255,255,0.18)";
     context.lineWidth = 1;
     for (let line = 0; line < 4; line += 1) {
         const y = padding + (chartHeight / 3) * line;
@@ -562,9 +561,9 @@ function drawSensorTrace(values, progress) {
     sensorChannels.forEach((channel, channelIndex) => {
         const target = values[channelIndex];
         const settledValue = target * (1 - Math.exp(-progress * 5));
-        const color = channelIndex % 2 === 0 ? green : orange;
+        const color = channelIndex % 2 === 0 ? "#dfece0" : orange;
         context.strokeStyle = color;
-        context.lineWidth = 1.5;
+        context.lineWidth = 2;
         context.beginPath();
 
         for (let point = 0; point <= 40; point += 1) {
@@ -581,10 +580,41 @@ function drawSensorTrace(values, progress) {
         context.stroke();
     });
 
+    const labelPositions = sensorChannels.map((channel, channelIndex) => {
+        const settledValue = values[channelIndex] * (1 - Math.exp(-progress * 5));
+        const value = clamp(settledValue + channelIndex * 0.018);
+        return {
+            channel,
+            color: channelIndex % 2 === 0 ? "#dfece0" : orange,
+            y: height - padding - value * chartHeight
+        };
+    }).sort((first, second) => first.y - second.y);
+    const minimumLabelGap = 22;
+    const minimumLabelY = padding + 8;
+    const maximumLabelY = height - padding;
+    labelPositions[0].y = clamp(labelPositions[0].y, minimumLabelY, maximumLabelY);
+    for (let index = 1; index < labelPositions.length; index += 1) {
+        labelPositions[index].y = Math.max(labelPositions[index].y, labelPositions[index - 1].y + minimumLabelGap);
+    }
+    const labelOverflow = labelPositions.at(-1).y - maximumLabelY;
+    if (labelOverflow > 0) {
+        labelPositions.forEach((label) => {
+            label.y -= labelOverflow;
+        });
+    }
+    context.textAlign = "right";
     context.font = '9px "DM Mono", monospace';
-    context.fillStyle = green;
+    labelPositions.forEach(({ channel, color, y }) => {
+        context.fillStyle = color;
+        context.fillText(channel, width - padding, y + 3);
+    });
+
+    context.textAlign = "left";
+    context.font = '9px "DM Mono", monospace';
+    context.fillStyle = "rgba(255,255,255,0.8)";
     context.fillText("LIVE SENSOR TRACE", padding, 13);
     context.fillStyle = orange;
+    context.textAlign = "right";
     context.fillText(`${Math.round(progress * 100)}% settled`, width - 80, 13);
 }
 
