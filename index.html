@@ -16,7 +16,7 @@
             <span class="brand-mark">◌</span>
             <span>फेक<span>smell</span></span>
         </a>
-        <div class="header-status"><span class="status-dot"></span> Sensor ready</div>
+        <div class="header-status"><span class="status-dot"></span> <span id="sensorStatus">Simulated sensor</span></div>
     </header>
 
     <main>
@@ -51,6 +51,7 @@
                     <h2 id="analyzer-heading">What are we smelling?</h2>
                 </div>
                 <div class="scan-state" id="scanState"><span class="pulse-dot"></span> Waiting for a sample</div>
+                <button class="secondary-button" id="analyzerScanButton" type="button">Scan sample</button>
             </div>
 
             <div class="analyzer-grid">
@@ -100,15 +101,17 @@
                     <div class="result-heading">
                         <div>
                             <p class="panel-label">Analysis result</p>
-                            <h3 id="resultName">Roasted coffee</h3>
+                            <h3 id="resultName">Run a scan to see a result</h3>
                         </div>
-                        <span class="confidence" id="confidence">Awaiting result</span>
+                        <span class="confidence" id="confidence">No result yet</span>
                     </div>
-                    <p class="result-description" id="resultDescription">A deep, comforting aroma with toasted notes and a soft caramel finish.</p>
+                    <p class="result-description" id="resultDescription">Choose a sample, then start a scan. This demo uses simulated sensor data.</p>
+                    <canvas id="sensorCanvas" class="sensor-canvas" width="600" height="180" aria-label="Live simulated sensor traces" hidden></canvas>
                     <div class="meter-list" id="meterList"></div>
+                    <div class="note-list" id="noteList" aria-label="Scent notes"></div>
                     <div class="result-footer">
-                        <span><i class="tiny-icon">⌁</i> 6 sensor channels analyzed</span>
-                        <span id="scanTime">Ready to scan</span>
+                        <span><i class="tiny-icon">⌁</i> Live simulated trace</span>
+                        <span id="scanTime">Waiting for scan</span>
                     </div>
                 </div>
             </div>

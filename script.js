@@ -39,8 +39,13 @@ const notes = {
 
 const sampleButtons = document.querySelectorAll(".sample-card");
 const scanButton = document.querySelector("#scanButton");
+const analyzerScanButton = document.querySelector("#analyzerScanButton");
 const scanState = document.querySelector("#scanState");
 const historyList = document.querySelector("#historyList");
+const sensorStatus = document.querySelector("#sensorStatus");
+const sensorCanvas = document.querySelector("#sensorCanvas");
+const noteList = document.querySelector("#noteList");
+const analyzerHeading = document.querySelector("#analyzer-heading");
 let selectedSample = "coffee";
 
 function loadHistory() {
@@ -134,19 +139,30 @@ function formatProbability(probability) {
     return `${Math.round(probability * 100)}% match`;
 }
 
-function buildMeters(vector, classKey) {
-    return notes[classKey].map((label, index) => [label, Math.round(vector[index] * 100)]);
+function buildMeters(vector) {
+    return sensorChannels.map((label, index) => [label, Math.round(vector[index] * 100)]);
 }
 
-function renderResult(classification, vector) {
+function renderEmptyResult() {
+    document.querySelector("#resultName").textContent = "Run a scan to see a result";
+    document.querySelector("#confidence").textContent = "No result yet";
+    document.querySelector("#resultDescription").textContent = "Choose a sample, then start a scan. This demo uses simulated sensor data.";
+    sensorCanvas.hidden = true;
+    document.querySelector("#meterList").innerHTML = "";
+    noteList.innerHTML = "";
+    document.querySelector("#scanTime").textContent = "Waiting for scan";
+}
+
+function renderFinalResult(classification, vector) {
     const topResult = classification[0];
     const profile = profiles[topResult.key];
     document.querySelector("#resultName").textContent = topResult.name;
     document.querySelector("#confidence").textContent = formatProbability(topResult.probability);
     document.querySelector("#resultDescription").textContent = profile.description;
-    document.querySelector("#meterList").innerHTML = buildMeters(vector, topResult.key).map(([label, value]) => `
+    document.querySelector("#meterList").innerHTML = buildMeters(vector).map(([label, value]) => `
         <div class="meter-row"><span>${label}</span><div class="meter"><i style="width: ${value}%"></i></div><strong>${value}%</strong></div>
     `).join("");
+    noteList.innerHTML = notes[topResult.key].map((note) => `<span class="note-chip">${note}</span>`).join("");
 }
 
 function renderHistory() {
@@ -159,37 +175,135 @@ function renderHistory() {
     `).join("");
 }
 
-function renderReferenceResult(classKey) {
-    const vector = fingerprints[classKey];
-    renderResult(classify(vector), vector);
+function setScanControlsLocked(locked) {
+    sampleButtons.forEach((button) => {
+        button.disabled = locked;
+    });
+    scanButton.disabled = locked;
+    analyzerScanButton.disabled = locked;
+}
+
+function scrollToAnalyzer() {
+    analyzerHeading.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start"
+    });
+}
+
+function canvasContext() {
+    const ratio = window.devicePixelRatio || 1;
+    const width = sensorCanvas.clientWidth;
+    const height = sensorCanvas.clientHeight;
+    sensorCanvas.width = width * ratio;
+    sensorCanvas.height = height * ratio;
+    const context = sensorCanvas.getContext("2d");
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    return { context, width, height };
+}
+
+function drawSensorTrace(values, progress) {
+    const { context, width, height } = canvasContext();
+    const green = getComputedStyle(document.documentElement).getPropertyValue("--green").trim();
+    const orange = getComputedStyle(document.documentElement).getPropertyValue("--orange").trim();
+    const padding = 22;
+    const chartWidth = width - padding * 2;
+    const chartHeight = height - padding * 2;
+
+    context.clearRect(0, 0, width, height);
+    context.strokeStyle = "#67936c";
+    context.lineWidth = 1;
+    for (let line = 0; line < 4; line += 1) {
+        const y = padding + (chartHeight / 3) * line;
+        context.beginPath();
+        context.moveTo(padding, y);
+        context.lineTo(width - padding, y);
+        context.stroke();
+    }
+
+    sensorChannels.forEach((channel, channelIndex) => {
+        const target = values[channelIndex];
+        const settledValue = target * (1 - Math.exp(-progress * 5));
+        const color = channelIndex % 2 === 0 ? green : orange;
+        context.strokeStyle = color;
+        context.lineWidth = 1.5;
+        context.beginPath();
+
+        for (let point = 0; point <= 40; point += 1) {
+            const x = padding + (chartWidth / 40) * point;
+            const wave = Math.sin(point * 0.75 + channelIndex * 1.7 + progress * 12) * 0.012 * (1 - progress);
+            const value = clamp(settledValue + wave + channelIndex * 0.018);
+            const y = height - padding - value * chartHeight;
+            if (point === 0) {
+                context.moveTo(x, y);
+            } else {
+                context.lineTo(x, y);
+            }
+        }
+        context.stroke();
+    });
+
+    context.font = '9px "DM Mono", monospace';
+    context.fillStyle = green;
+    context.fillText("LIVE SENSOR TRACE", padding, 13);
+    context.fillStyle = orange;
+    context.fillText(`${Math.round(progress * 100)}% settled`, width - 80, 13);
+}
+
+function animateSensorTrace(vector, onComplete) {
+    sensorCanvas.hidden = false;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion) {
+        drawSensorTrace(vector, 1);
+        onComplete();
+        return;
+    }
+
+    const duration = 2000;
+    const start = performance.now();
+    function frame(timestamp) {
+        const progress = Math.min((timestamp - start) / duration, 1);
+        drawSensorTrace(vector, progress);
+        if (progress < 1) {
+            window.requestAnimationFrame(frame);
+        } else {
+            onComplete();
+        }
+    }
+    window.requestAnimationFrame(frame);
 }
 
 sampleButtons.forEach((button) => {
     button.addEventListener("click", () => {
+        if (scanButton.disabled) {
+            return;
+        }
         sampleButtons.forEach((item) => item.classList.remove("active"));
         button.classList.add("active");
         selectedSample = button.dataset.sample;
-        renderReferenceResult(selectedSample);
-        document.querySelector("#scanTime").textContent = "Ready to scan";
+        renderEmptyResult();
+        document.querySelector("#scanTime").textContent = "Waiting for scan";
         scanState.innerHTML = '<span class="pulse-dot"></span> Waiting for a sample';
     });
 });
 
-scanButton.addEventListener("click", () => {
-    scanButton.disabled = true;
+function startScan() {
+    scrollToAnalyzer();
+    setScanControlsLocked(true);
     scanButton.innerHTML = '<span class="button-icon">◌</span> Analyzing...';
+    analyzerScanButton.textContent = "Scanning...";
     scanState.classList.add("scanning");
     scanState.innerHTML = '<span class="pulse-dot"></span> Reading sensor layers';
-    document.querySelector("#scanTime").textContent = "Analyzing signal...";
+    sensorStatus.textContent = "Scanning...";
+    document.querySelector("#scanTime").textContent = "Reading simulated signal...";
 
-    window.setTimeout(() => {
-        const reading = simulateReading(selectedSample);
+    const reading = simulateReading(selectedSample);
+    animateSensorTrace(reading.vector, () => {
         const classification = classify(reading.vector);
         const topResult = classification[0];
         const profile = profiles[topResult.key];
         const now = new Date();
 
-        renderResult(classification, reading.vector);
+        renderFinalResult(classification, reading.vector);
         history.unshift({
             key: topResult.key,
             name: topResult.name,
@@ -203,11 +317,16 @@ scanButton.addEventListener("click", () => {
         renderHistory();
         scanState.classList.remove("scanning");
         scanState.innerHTML = '<span class="pulse-dot"></span> Scan complete';
+        sensorStatus.textContent = "Simulated sensor";
         document.querySelector("#scanTime").textContent = "Just now";
-        scanButton.disabled = false;
+        setScanControlsLocked(false);
         scanButton.innerHTML = '<span class="button-icon">⌁</span> Scan again';
-    }, 1500);
-});
+        analyzerScanButton.textContent = "Scan again";
+    });
+}
+
+scanButton.addEventListener("click", startScan);
+analyzerScanButton.addEventListener("click", startScan);
 
 document.querySelector("#clearHistory").addEventListener("click", () => {
     history = [];
@@ -215,5 +334,5 @@ document.querySelector("#clearHistory").addEventListener("click", () => {
     renderHistory();
 });
 
-renderReferenceResult(selectedSample);
+renderEmptyResult();
 renderHistory();

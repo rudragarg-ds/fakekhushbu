@@ -21,6 +21,7 @@ Try the deployed prototype at <https://rudragarg-ds.github.io/fakekhushbu/>.
 ## Demo features
 
 - One-click scan animation with clear sensor status feedback.
+- Live canvas trace that settles toward all six simulated sensor readings.
 - Four sample profiles: roasted coffee, fresh citrus, after the rain, and crushed mint.
 - Confidence score plus four interpretable scent dimensions.
 - Six-channel simulated readings with seeded Gaussian noise and cosine-similarity softmax classification.
