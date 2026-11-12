@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="फेकsmell is a visual electronic-nose demo for classifying smells.">
+    <title>फेकsmell — Smart smell detection</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="site-header">
+        <a class="brand" href="#" aria-label="फेकsmell home">
+            <span class="brand-mark">◌</span>
+            <span>फेक<span>smell</span></span>
+        </a>
+        <div class="header-status"><span class="status-dot"></span> Sensor ready</div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-copy">
+                <p class="eyebrow">ELECTRONIC NOSE · LIVE DEMO</p>
+                <h1>Give your world<br><em>a signature.</em></h1>
+                <p class="hero-text">A friendly interface for sensing and classifying aromas. Choose a sample to see how an electronic nose turns invisible molecules into a readable scent profile.</p>
+                <div class="hero-actions">
+                    <button class="primary-button" id="scanButton" type="button">
+                        <span class="button-icon">⌁</span> Start a scan
+                    </button>
+                    <a class="text-link" href="#how-it-works">How it works <span>↘</span></a>
+                </div>
+            </div>
+            <div class="orb-wrap" aria-label="Animated scent sensor illustration">
+                <div class="orb-halo"></div>
+                <div class="orb">
+                    <div class="orb-core"></div>
+                    <span class="orb-label">SENSE<br><b>01</b></span>
+                </div>
+                <span class="orbit-dot dot-a"></span>
+                <span class="orbit-dot dot-b"></span>
+                <span class="orbit-dot dot-c"></span>
+            </div>
+        </section>
+
+        <section class="workspace" aria-labelledby="analyzer-heading">
+            <div class="section-topline">
+                <div>
+                    <p class="eyebrow">ANALYZER</p>
+                    <h2 id="analyzer-heading">What are we smelling?</h2>
+                </div>
+                <div class="scan-state" id="scanState"><span class="pulse-dot"></span> Waiting for a sample</div>
+            </div>
+
+            <div class="analyzer-grid">
+                <div class="sample-panel">
+                    <p class="panel-label">Select a sample</p>
+                    <div class="sample-list" role="list">
+                        <button class="sample-card active" type="button" data-sample="coffee">
+                            <span class="sample-emoji">☕</span>
+                            <span><b>Roasted coffee</b><small>Warm · nutty · bold</small></span>
+                            <span class="sample-check">✓</span>
+                        </button>
+                        <button class="sample-card" type="button" data-sample="citrus">
+                            <span class="sample-emoji">🍊</span>
+                            <span><b>Fresh citrus</b><small>Bright · zesty · clean</small></span>
+                            <span class="sample-check">✓</span>
+                        </button>
+                        <button class="sample-card" type="button" data-sample="rain">
+                            <span class="sample-emoji">🌧</span>
+                            <span><b>After the rain</b><small>Earthy · cool · mineral</small></span>
+                            <span class="sample-check">✓</span>
+                        </button>
+                        <button class="sample-card" type="button" data-sample="mint">
+                            <span class="sample-emoji">🌿</span>
+                            <span><b>Crushed mint</b><small>Green · fresh · sharp</small></span>
+                            <span class="sample-check">✓</span>
+                        </button>
+                    </div>
+                    <p class="demo-note"><span>✦</span> Demo mode uses a simulated sensor signal. Connect a real e-nose API to identify live samples.</p>
+                </div>
+
+                <div class="result-panel" aria-live="polite">
+                    <div class="result-heading">
+                        <div>
+                            <p class="panel-label">Analysis result</p>
+                            <h3 id="resultName">Roasted coffee</h3>
+                        </div>
+                        <span class="confidence" id="confidence">96% match</span>
+                    </div>
+                    <p class="result-description" id="resultDescription">A deep, comforting aroma with toasted notes and a soft caramel finish.</p>
+                    <div class="meter-list" id="meterList"></div>
+                    <div class="result-footer">
+                        <span><i class="tiny-icon">⌁</i> 4 sensor layers analyzed</span>
+                        <span id="scanTime">Ready to scan</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="history-section" id="historySection" aria-labelledby="history-heading">
+            <div class="section-topline">
+                <div>
+                    <p class="eyebrow">RECENT READINGS</p>
+                    <h2 id="history-heading">Your scent trail</h2>
+                </div>
+                <button class="clear-button" id="clearHistory" type="button">Clear history</button>
+            </div>
+            <div class="history-list" id="historyList">
+                <div class="empty-history">Your completed scans will appear here.</div>
+            </div>
+        </section>
+
+        <section class="how-section" id="how-it-works">
+            <div>
+                <p class="eyebrow">THE IDEA</p>
+                <h2>Smell, translated.</h2>
+            </div>
+            <div class="steps">
+                <div class="step"><span>01</span><b>Capture</b><p>Volatile molecules meet a small array of chemical sensors.</p></div>
+                <div class="step"><span>02</span><b>Compare</b><p>The signal is compared with known scent fingerprints.</p></div>
+                <div class="step"><span>03</span><b>Describe</b><p>A clear profile helps you understand what is in the air.</p></div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <span>फेकSMELL / 2026</span>
+        <span>Designed for curious noses.</span>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>
