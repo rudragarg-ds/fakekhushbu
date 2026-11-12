@@ -23,6 +23,7 @@ Try the deployed prototype at <https://rudragarg-ds.github.io/fakekhushbu/>.
 - One-click scan animation with clear sensor status feedback.
 - Four sample profiles: roasted coffee, fresh citrus, after the rain, and crushed mint.
 - Confidence score plus four interpretable scent dimensions.
+- Six-channel simulated readings with seeded Gaussian noise and cosine-similarity softmax classification.
 - Recent scan history stored in `localStorage`.
 - Responsive layout for laptops, tablets, and phones.
 - Accessible buttons, labels, live result updates, and reduced visual complexity on small screens.
@@ -74,6 +75,10 @@ Browsers cannot smell without an external sensor. A production version would rep
 4. Keeps confidence scores calibrated against a labelled training set.
 
 Possible next steps are Web Serial for a USB-connected microcontroller, Web Bluetooth for a supported device, or a small server endpoint for model inference. The current UI intentionally keeps this boundary clean so a hardware integration does not require a redesign.
+
+### Classification pipeline
+
+Each simulated reading contains normalized values for Alcohol/VOC, Ammonia, Sulfur, Smoke/CO, Humidity, and Terpenes. `simulateReading()` adds seeded Gaussian noise and a small baseline drift to the selected fingerprint. `classify()` compares that vector with every reference fingerprint using cosine similarity, then converts the similarities into probabilities with a temperature-scaled softmax. The seed is saved with each history entry so a scan can be reproduced.
 
 ## Important limitation
 
