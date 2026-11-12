@@ -6,7 +6,7 @@
 
 **Who it helps:** Kitchens and supply chains, homes and hostels, classrooms and workplaces, and people with anosmia.
 
-फेकsmell is a hackathon-ready electronic-nose experience for a practical problem: smell can carry early clues about spoiled food, smoke, indoor air, and scent description for people with anosmia. It turns invisible scent signals into a visual, understandable profile. The current prototype runs entirely in the browser with a deterministic sensor simulation, so it is reliable to demo without special hardware and makes no medical or safety-certification claims.
+फेकsmell is a hackathon-ready electronic-nose experience for a practical problem: smell can carry early clues about spoiled food, smoke, indoor air, and scent description for people with anosmia. It turns invisible scent signals into a visual, understandable profile. The current prototype runs entirely in the browser with a seeded, reproducible sensor simulation, so it is reliable to demo without special hardware and makes no medical or safety-certification claims.
 
 ## Why it matters
 
@@ -23,8 +23,6 @@ For the hackathon demo, the first step is simulated so the experience works on a
 Try the deployed prototype at <https://rudragarg-ds.github.io/fakekhushbu/>.
 
 ## Screenshots
-
-These placeholders can be replaced with current captures of the home and result states:
 
 ![फेकsmell home screen](docs/screenshot-home.png)
 
@@ -74,22 +72,20 @@ Using a local server is recommended when testing browser integrations or deployi
 ## Project structure
 
 ```text
-index.html   Semantic page structure and demo content
-style.css    Visual system, responsive layout, and animations
-script.js    Sample data, scan state machine, and local history
-README.md    Product story, setup, demo flow, and integration notes
+index.html
+style.css
+script.js
+README.md
+LICENSE
+.gitignore
+docs/esp32_sketch.ino
+docs/screenshot-home.png
+docs/screenshot-result.png
 ```
 
 ## Sensor integration path
 
-Browsers cannot smell without an external sensor. A production version would replace the sample selection in `script.js` with an adapter that:
-
-1. Reads a normalized array of sensor values from an Arduino, ESP32, or backend API.
-2. Maps those values to the same six-channel profile shape used by the demo.
-3. Sends the profile through the existing result-rendering flow.
-4. Keeps confidence scores and uncertainty thresholds calibrated against a labelled training set.
-
-Possible next steps are Web Serial for a USB-connected microcontroller, Web Bluetooth for a supported device, or a small server endpoint for model inference. The current UI intentionally keeps this boundary clean so a hardware integration does not require a redesign.
+Browsers cannot smell without an external sensor. The Web Serial adapter exists for USB-connected Arduino and ESP32 devices: it reads six normalized channels, sends them through the existing classifier, and falls back to the simulated sensor when disconnected. The fingerprints are placeholder values for the demo. Real use needs a calibrated model trained and evaluated on labelled samples from the target sensor array.
 
 ### Optional Web Serial sensor
 
@@ -110,7 +106,13 @@ Values in the `0..1023` analog range are normalized to `0..1` before entering th
 
 ### Measured accuracy (simulated)
 
-The **Run 200 test scans** button measures accuracy against the app's own simulated fingerprints at the selected noise level. The result and confusion matrix are a benchmark of simulated data only, not real-world sensor accuracy.
+The **Run 200 test scans** button measures accuracy against the app's own simulated fingerprints at the selected noise level. These representative results come from the in-app 200-scan benchmark and are simulated-data metrics only:
+
+| Noise level | Overall top-1 accuracy | Accuracy when confident |
+| --- | ---: | ---: |
+| Low (σ = 0.03) | 100% | 100% |
+| Medium (σ = 0.08) | 100% | 100% |
+| High (σ = 0.18) | ~94% | ~97% |
 
 ## Important limitation
 

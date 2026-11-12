@@ -9,9 +9,9 @@ const sensorChannels = [
 
 const fingerprints = {
     coffee: [0.72, 0.18, 0.28, 0.48, 0.56, 0.22],
-    citrus: [0.42, 0.08, 0.04, 0.1, 0.48, 0.82],
+    citrus: [0.62, 0.06, 0.04, 0.08, 0.30, 0.70],
     rain: [0.12, 0.18, 0.1, 0.08, 0.88, 0.3],
-    mint: [0.2, 0.06, 0.04, 0.05, 0.42, 0.9],
+    mint: [0.10, 0.05, 0.03, 0.04, 0.62, 0.88],
     spoiledMilk: [0.28, 0.88, 0.92, 0.2, 0.62, 0.08],
     smoke: [0.38, 0.16, 0.5, 0.94, 0.18, 0.14],
     rubbingAlcohol: [0.96, 0.04, 0.02, 0.08, 0.2, 0.06]
@@ -39,7 +39,7 @@ const notes = {
 
 const noiseLevels = [0.03, 0.08, 0.18];
 const noiseLabels = ["Low", "Medium", "High"];
-const historyStorageKey = "fakesmell-history-v2";
+const historyStorageKey = "fakesmell-history-v3";
 const sampleButtons = document.querySelectorAll(".sample-card");
 const scanButton = document.querySelector("#scanButton");
 const analyzerScanButton = document.querySelector("#analyzerScanButton");
@@ -72,6 +72,7 @@ let mysteryActualKey = null;
 let replayButtons = [];
 let serialPort = null;
 let serialReader = null;
+let readLoopDone = Promise.resolve();
 let latestSensorVector = null;
 
 function isValidHistoryEntry(item) {
@@ -81,15 +82,24 @@ function isValidHistoryEntry(item) {
         !Array.isArray(item) &&
         typeof item.key === "string" &&
         Object.prototype.hasOwnProperty.call(profiles, item.key) &&
+        (item.sourceKey === null ||
+            (typeof item.sourceKey === "string" &&
+                Object.prototype.hasOwnProperty.call(profiles, item.sourceKey))) &&
         item.name === profiles[item.key].name &&
         item.emoji === profiles[item.key].emoji &&
+        Number.isFinite(item.noise) &&
+        item.noise >= 0 &&
+        item.noise <= 1 &&
+        typeof item.uncertain === "boolean" &&
         typeof item.time === "string" &&
         Number.isFinite(item.confidence) &&
         item.confidence >= 0 &&
         item.confidence <= 1 &&
         Number.isInteger(item.seed) &&
         item.seed >= 0 &&
-        item.seed <= 4294967295
+        item.seed <= 4294967295 &&
+        (item.source === "simulated" || item.source === "live") &&
+        (item.source === "live" || item.sourceKey !== null)
     );
 }
 
@@ -174,6 +184,7 @@ async function readSerialData(port) {
             latestSensorVector = null;
             connectSensorButton.textContent = "Connect sensor";
             sensorStatus.textContent = "Simulated sensor";
+            mysteryButton.disabled = scanButton.disabled;
             scanState.innerHTML = '<span class="pulse-dot"></span> Live sensor disconnected';
             try {
                 if (port.opened) {
@@ -188,6 +199,7 @@ async function readSerialData(port) {
 
 async function disconnectSensor() {
     const port = serialPort;
+    const readLoop = readLoopDone;
     serialPort = null;
     latestSensorVector = null;
     connectSensorButton.textContent = "Connect sensor";
@@ -200,6 +212,13 @@ async function disconnectSensor() {
         }
     }
 
+    try {
+        await readLoop;
+    } catch (error) {
+        console.warn("Unable to finish the sensor reader.", error);
+    }
+    readLoopDone = Promise.resolve();
+
     if (port) {
         try {
             if (port.opened) {
@@ -211,6 +230,7 @@ async function disconnectSensor() {
     }
 
     sensorStatus.textContent = "Simulated sensor";
+    mysteryButton.disabled = scanButton.disabled;
     scanState.innerHTML = '<span class="pulse-dot"></span> Live sensor disconnected';
 }
 
@@ -228,8 +248,14 @@ async function connectSensor() {
         latestSensorVector = null;
         connectSensorButton.textContent = "Disconnect sensor";
         sensorStatus.textContent = "Live sensor";
+        mysteryMode = false;
+        mysteryActualKey = null;
+        mysteryButton.disabled = true;
+        mysteryResult.hidden = true;
+        mysteryResult.className = "mystery-result";
+        resultDescription.textContent = "Uncalibrated live data. This result is not calibrated for real-world identification.";
         scanState.innerHTML = '<span class="pulse-dot"></span> Waiting for live sensor data';
-        readSerialData(port);
+        readLoopDone = readSerialData(port);
     } catch (error) {
         console.warn("Unable to connect to the sensor.", error);
         if (port?.opened) {
@@ -337,7 +363,7 @@ function renderEmptyResult() {
     scanTime.textContent = "Waiting for scan";
 }
 
-function renderFinalResult(classification, vector) {
+function renderFinalResult(classification, vector, usesLiveSensor = false) {
     const topResult = classification[0];
     const profile = profiles[topResult.key];
     const uncertain = isUncertain(classification);
@@ -345,9 +371,11 @@ function renderFinalResult(classification, vector) {
     resultName.textContent = resultLabel;
     confidence.textContent = formatProbability(topResult.probability);
     resultAnnouncement.textContent = `Result: ${resultLabel}, ${Math.round(topResult.probability * 100)} percent confidence.`;
-    resultDescription.textContent = uncertain
-        ? "The simulated signal is ambiguous. Here are the three closest candidates."
-        : profile.description;
+    resultDescription.textContent = usesLiveSensor
+        ? "Uncalibrated live data. This result is not calibrated for real-world identification."
+        : (uncertain
+            ? "The simulated signal is ambiguous. Here are the three closest candidates."
+            : profile.description);
     candidateList.innerHTML = uncertain
         ? classification.slice(0, 3).map((candidate) => `
             <span><b>${candidate.name}</b><strong>${formatProbability(candidate.probability)}</strong></span>
@@ -358,11 +386,15 @@ function renderFinalResult(classification, vector) {
     `).join("");
     noteList.innerHTML = notes[topResult.key].map((note) => `<span class="note-chip">${note}</span>`).join("");
 
-    if (mysteryMode) {
+    if (mysteryMode && !usesLiveSensor) {
         const isCorrect = topResult.key === mysteryActualKey;
         mysteryResult.hidden = false;
-        mysteryResult.className = `mystery-result ${isCorrect ? "correct" : "wrong"}`;
-        mysteryResult.innerHTML = `<span>Actual: ${profiles[mysteryActualKey].name}</span><span class="mystery-badge">${isCorrect ? "✓ Correct" : "✗ Wrong"}</span>`;
+        const mysteryBadge = uncertain ? "Abstained" : (isCorrect ? "✓ Correct" : "✗ Wrong");
+        mysteryResult.className = `mystery-result ${uncertain ? "abstained" : (isCorrect ? "correct" : "wrong")}`;
+        mysteryResult.innerHTML = `<span>Actual: ${profiles[mysteryActualKey].name}</span><span class="mystery-badge">${mysteryBadge}</span>`;
+    } else if (usesLiveSensor) {
+        mysteryResult.hidden = true;
+        mysteryResult.className = "mystery-result";
     }
 }
 
@@ -383,21 +415,28 @@ function renderHistory() {
         const details = document.createElement("span");
         const name = document.createElement("b");
         const metadata = document.createElement("small");
-        const replay = document.createElement("button");
 
         card.className = "history-card";
         emoji.className = "sample-emoji";
         emoji.textContent = item.emoji;
-        name.textContent = item.name;
+        name.textContent = item.uncertain ? `Not sure (closest: ${item.name})` : item.name;
         metadata.textContent = `${item.time} · ${formatProbability(item.confidence)}`;
         details.append(name, metadata);
-        replay.className = "history-replay";
-        replay.type = "button";
-        replay.textContent = "Replay";
-        replay.addEventListener("click", () => startScan({ key: item.key, seed: item.seed }));
-        card.append(emoji, details, replay);
+        if (item.source === "live") {
+            const liveReading = document.createElement("span");
+            liveReading.className = "history-replay";
+            liveReading.textContent = "Live reading";
+            card.append(emoji, details, liveReading);
+        } else {
+            const replay = document.createElement("button");
+            replay.className = "history-replay";
+            replay.type = "button";
+            replay.textContent = "Replay";
+            replay.addEventListener("click", () => startScan(item));
+            card.append(emoji, details, replay);
+            replayButtons.push(replay);
+        }
         historyList.append(card);
-        replayButtons.push(replay);
     });
 }
 
@@ -407,7 +446,7 @@ function setScanControlsLocked(locked) {
     });
     scanButton.disabled = locked;
     analyzerScanButton.disabled = locked;
-    mysteryButton.disabled = locked;
+    mysteryButton.disabled = locked || Boolean(serialPort);
     testButton.disabled = locked;
     noiseLevelInput.disabled = locked;
     connectSensorButton.disabled = locked;
@@ -437,6 +476,10 @@ function renderConfusionMatrix(matrix, classKeys) {
     `;
 }
 
+function formatRate(count, total) {
+    return total ? `${Math.round((count / total) * 1000) / 10}%` : "n/a";
+}
+
 function runBenchmark() {
     setScanControlsLocked(true);
     testButton.textContent = "Running 200 scans...";
@@ -447,19 +490,31 @@ function runBenchmark() {
         Object.fromEntries(classKeys.map((predictedKey) => [predictedKey, 0]))
     ]));
     let correct = 0;
+    let uncertainCount = 0;
+    let confidentCorrect = 0;
+    let confidentCount = 0;
 
     for (let scan = 0; scan < 200; scan += 1) {
         const actualKey = classKeys[Math.floor(Math.random() * classKeys.length)];
         const reading = simulateReading(actualKey, selectedNoise());
-        const predictedKey = classify(reading.vector)[0].key;
+        const classification = classify(reading.vector);
+        const predictedKey = classification[0].key;
+        const uncertain = isUncertain(classification);
         matrix[actualKey][predictedKey] += 1;
         if (actualKey === predictedKey) {
             correct += 1;
         }
+        if (uncertain) {
+            uncertainCount += 1;
+        } else {
+            confidentCount += 1;
+            if (actualKey === predictedKey) {
+                confidentCorrect += 1;
+            }
+        }
     }
 
-    const accuracy = Math.round((correct / 200) * 1000) / 10;
-    accuracySummary.textContent = `${accuracy}% accuracy (${correct} correct of 200) at ${noiseLabels[Number(noiseLevelInput.value)].toLowerCase()} noise (σ = ${selectedNoise()}).`;
+    accuracySummary.textContent = `Top-1 accuracy: ${formatRate(correct, 200)} · Not sure: ${formatRate(uncertainCount, 200)} · Accuracy when confident: ${formatRate(confidentCorrect, confidentCount)} · Noise σ: ${selectedNoise()}.`;
     renderConfusionMatrix(matrix, classKeys);
     accuracyPanel.open = true;
     sensorStatus.textContent = serialPort ? "Live sensor" : "Simulated sensor";
@@ -576,7 +631,7 @@ sampleButtons.forEach((button) => {
 
 function startScan(replayEntry = null) {
     if (replayEntry) {
-        selectedSample = replayEntry.key;
+        selectedSample = replayEntry.sourceKey;
         mysteryMode = false;
         mysteryActualKey = null;
         sampleButtons.forEach((button) => {
@@ -597,33 +652,53 @@ function startScan(replayEntry = null) {
     scanTime.textContent = serialPort && !replayEntry ? "Reading live signal..." : "Reading simulated signal...";
 
     if (serialPort && !latestSensorVector && !replayEntry) {
-        scanState.classList.remove("scanning");
-        scanState.innerHTML = '<span class="pulse-dot"></span> Waiting for live sensor data';
-        scanTime.textContent = "No live reading yet";
-        setScanControlsLocked(false);
-        scanButton.innerHTML = '<span class="button-icon">⌁</span> Start a scan';
-        analyzerScanButton.textContent = "Scan sample";
+        const waitStarted = performance.now();
+        const waitForLiveData = () => {
+            if (latestSensorVector && serialPort) {
+                startScan();
+                return;
+            }
+            if (!serialPort || performance.now() - waitStarted >= 3000) {
+                scanState.classList.remove("scanning");
+                scanState.innerHTML = '<span class="pulse-dot"></span> No live data received';
+                scanTime.textContent = "No live data received";
+                setScanControlsLocked(false);
+                scanButton.innerHTML = '<span class="button-icon">⌁</span> Start a scan';
+                analyzerScanButton.textContent = "Scan sample";
+                return;
+            }
+            window.setTimeout(waitForLiveData, 50);
+        };
+        waitForLiveData();
         return;
     }
 
     const usesLiveSensor = Boolean(serialPort && !replayEntry);
     const reading = usesLiveSensor
         ? { vector: [...latestSensorVector], seed: createSeed() }
-        : simulateReading(selectedSample, selectedNoise(), replayEntry?.seed);
+        : simulateReading(
+            replayEntry ? replayEntry.sourceKey : selectedSample,
+            replayEntry ? replayEntry.noise : selectedNoise(),
+            replayEntry?.seed
+        );
     animateSensorTrace(reading.vector, () => {
         const classification = classify(reading.vector);
         const topResult = classification[0];
         const profile = profiles[topResult.key];
         const now = new Date();
 
-        renderFinalResult(classification, reading.vector);
+        renderFinalResult(classification, reading.vector, usesLiveSensor);
         history.unshift({
             key: topResult.key,
             name: topResult.name,
             emoji: profile.emoji,
+            sourceKey: usesLiveSensor ? null : (replayEntry ? replayEntry.sourceKey : selectedSample),
+            noise: usesLiveSensor ? selectedNoise() : (replayEntry ? replayEntry.noise : selectedNoise()),
+            uncertain: isUncertain(classification),
             confidence: topResult.probability,
             seed: reading.seed,
-            time: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            time: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            source: usesLiveSensor ? "live" : "simulated"
         });
         history = history.slice(0, 8);
         localStorage.setItem(historyStorageKey, JSON.stringify(history));

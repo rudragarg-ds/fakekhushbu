@@ -102,6 +102,7 @@ h2 { margin-bottom: 0; font-size: clamp(27px, 3vw, 38px); letter-spacing: -.05em
 .mystery-result[hidden] { display: none; }
 .mystery-badge { border: 1px solid #8bb78d; border-radius: 20px; padding: 4px 7px; color: #d9f1d6; font-size: 9px; }
 .mystery-result.wrong .mystery-badge { border-color: #d99a70; color: #ffd1b0; }
+.mystery-result.abstained .mystery-badge { border-color: #b8c2bb; color: #e0e8e1; }
 .sensor-canvas { display: block; width: 100%; height: 180px; margin: 19px 0 24px; border: 1px solid #67936c; border-radius: 6px; background: #2f6047; }
 .meter-list { display: grid; gap: 13px; margin: 25px 0 28px; }.meter-row { display: grid; grid-template-columns: 90px 1fr 32px; align-items: center; gap: 11px; color: #d0e3ce; font-size: 11px; }.meter { height: 5px; overflow: hidden; border-radius: 5px; background: #739c79; }.meter i { display: block; height: 100%; border-radius: inherit; background: #e8b778; transition: width .5s ease; }.meter-row strong { color: #f0f9eb; font: 10px "DM Mono", monospace; text-align: right; }
 .note-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 22px; }.note-chip { border: 1px solid #8bb78d; border-radius: 20px; padding: 5px 8px; color: #d9f1d6; font: 10px "DM Mono", monospace; }
