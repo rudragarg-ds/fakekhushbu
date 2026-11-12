@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="फेकsmell is a visual electronic-nose demo for classifying smells.">
+    <meta name="description" content="फेकsmell is a simulated electronic-nose demo exploring how smell signals can surface spoilage, smoke, air-quality, and accessibility clues.">
     <title>फेकsmell — Smart smell detection</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <a class="skip-link" href="#analyzer-heading">Skip to analyzer</a>
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
 
@@ -50,62 +51,81 @@
                     <p class="eyebrow">ANALYZER</p>
                     <h2 id="analyzer-heading">What are we smelling?</h2>
                 </div>
-                <div class="scan-state" id="scanState"><span class="pulse-dot"></span> Waiting for a sample</div>
+                <div class="scan-state" id="scanState" aria-live="polite"><span class="pulse-dot"></span> Waiting for a sample</div>
                 <button class="secondary-button" id="analyzerScanButton" type="button">Scan sample</button>
             </div>
 
             <div class="analyzer-grid">
                 <div class="sample-panel">
                     <p class="panel-label">Select a sample</p>
-                    <div class="sample-list" role="list">
-                        <button class="sample-card active" type="button" data-sample="coffee">
+                    <div class="sample-list">
+                        <button class="sample-card active" type="button" data-sample="coffee" aria-pressed="true">
                             <span class="sample-emoji">☕</span>
                             <span><b>Roasted coffee</b><small>Warm · nutty · bold</small></span>
                             <span class="sample-check">✓</span>
                         </button>
-                        <button class="sample-card" type="button" data-sample="citrus">
+                        <button class="sample-card" type="button" data-sample="citrus" aria-pressed="false">
                             <span class="sample-emoji">🍊</span>
                             <span><b>Fresh citrus</b><small>Bright · zesty · clean</small></span>
                             <span class="sample-check">✓</span>
                         </button>
-                        <button class="sample-card" type="button" data-sample="rain">
+                        <button class="sample-card" type="button" data-sample="rain" aria-pressed="false">
                             <span class="sample-emoji">🌧</span>
                             <span><b>After the rain</b><small>Earthy · cool · mineral</small></span>
                             <span class="sample-check">✓</span>
                         </button>
-                        <button class="sample-card" type="button" data-sample="mint">
+                        <button class="sample-card" type="button" data-sample="mint" aria-pressed="false">
                             <span class="sample-emoji">🌿</span>
                             <span><b>Crushed mint</b><small>Green · fresh · sharp</small></span>
                             <span class="sample-check">✓</span>
                         </button>
-                        <button class="sample-card" type="button" data-sample="spoiledMilk">
+                        <button class="sample-card" type="button" data-sample="spoiledMilk" aria-pressed="false">
                             <span class="sample-emoji">🥛</span>
                             <span><b>Spoiled milk</b><small>Sour · sharp · funky</small></span>
                             <span class="sample-check">✓</span>
                         </button>
-                        <button class="sample-card" type="button" data-sample="smoke">
+                        <button class="sample-card" type="button" data-sample="smoke" aria-pressed="false">
                             <span class="sample-emoji">💨</span>
                             <span><b>Smoke</b><small>Dry · ashy · acrid</small></span>
                             <span class="sample-check">✓</span>
                         </button>
-                        <button class="sample-card" type="button" data-sample="rubbingAlcohol">
+                        <button class="sample-card" type="button" data-sample="rubbingAlcohol" aria-pressed="false">
                             <span class="sample-emoji">🧴</span>
                             <span><b>Rubbing alcohol</b><small>Sharp · sterile · volatile</small></span>
                             <span class="sample-check">✓</span>
                         </button>
                     </div>
-                    <p class="demo-note"><span>✦</span> Demo mode uses a simulated sensor signal. Connect a real e-nose API to identify live samples.</p>
+                    <div class="sample-tools">
+                        <button class="secondary-button mystery-button" id="mysteryButton" type="button">Mystery sample</button>
+                        <button class="secondary-button connect-sensor-button" id="connectSensorButton" type="button" hidden>Connect sensor</button>
+                        <div class="noise-control">
+                            <label for="noiseLevel">Noise level <output id="noiseValue" for="noiseLevel">Medium</output></label>
+                            <input id="noiseLevel" type="range" min="0" max="2" step="1" value="1">
+                        </div>
+                    </div>
+                    <button class="test-button" id="testButton" type="button">Run 200 test scans</button>
+                    <details class="accuracy-panel" id="accuracyPanel">
+                        <summary>Accuracy on simulated data</summary>
+                        <div class="accuracy-content">
+                            <p id="accuracySummary">Run the test to measure this classifier on simulated data.</p>
+                            <div class="confusion-wrap" id="confusionMatrix"></div>
+                        </div>
+                    </details>
+                    <p class="demo-note"><span>✦</span> The demo defaults to simulated sensor data. A connected sensor can provide live readings.</p>
                 </div>
 
                 <div class="result-panel" aria-live="polite">
+                    <p class="sr-only" id="resultAnnouncement" aria-live="polite" aria-atomic="true"></p>
                     <div class="result-heading">
                         <div>
                             <p class="panel-label">Analysis result</p>
                             <h3 id="resultName">Run a scan to see a result</h3>
+                            <div class="mystery-result" id="mysteryResult" hidden></div>
                         </div>
                         <span class="confidence" id="confidence">No result yet</span>
                     </div>
                     <p class="result-description" id="resultDescription">Choose a sample, then start a scan. This demo uses simulated sensor data.</p>
+                    <div class="candidate-list" id="candidateList" aria-live="polite"></div>
                     <canvas id="sensorCanvas" class="sensor-canvas" width="600" height="180" aria-label="Live simulated sensor traces" hidden></canvas>
                     <div class="meter-list" id="meterList"></div>
                     <div class="note-list" id="noteList" aria-label="Scent notes"></div>
@@ -130,6 +150,63 @@
             </div>
         </section>
 
+        <section class="impact-section" aria-labelledby="impact-heading">
+            <div class="section-topline">
+                <div>
+                    <p class="eyebrow">WHY IT MATTERS</p>
+                    <h2 id="impact-heading">Smells carry safety information.</h2>
+                </div>
+            </div>
+            <div class="use-case-grid">
+                <article class="use-case-card">
+                    <span>01</span>
+                    <b>Food spoilage</b>
+                    <p>Problem: Spoilage can be missed in kitchens and supply chains.</p>
+                    <p>How: An e-nose can flag a changing scent profile for review.</p>
+                </article>
+                <article class="use-case-card">
+                    <span>02</span>
+                    <b>Gas and smoke</b>
+                    <p>Problem: Early warning can be hard to notice in homes and hostels.</p>
+                    <p>How: An e-nose can watch for unusual gas or smoke patterns.</p>
+                </article>
+                <article class="use-case-card">
+                    <span>03</span>
+                    <b>Indoor air quality</b>
+                    <p>Problem: Classrooms and workplaces may have stale or changing air.</p>
+                    <p>How: An e-nose can screen patterns that deserve attention.</p>
+                </article>
+                <article class="use-case-card">
+                    <span>04</span>
+                    <b>Accessible descriptions</b>
+                    <p>Problem: People with anosmia cannot rely on their sense of smell.</p>
+                    <p>How: An e-nose can translate scent patterns into words.</p>
+                </article>
+            </div>
+            <div class="roadmap">
+                <p class="panel-label">Roadmap</p>
+                <div class="roadmap-steps">
+                    <div class="roadmap-step current">
+                        <span>01</span>
+                        <b>Simulated demo</b>
+                        <small>Done · current</small>
+                    </div>
+                    <span class="roadmap-arrow" aria-hidden="true">→</span>
+                    <div class="roadmap-step">
+                        <span>02</span>
+                        <b>Real sensor array</b>
+                        <small>On ESP32</small>
+                    </div>
+                    <span class="roadmap-arrow" aria-hidden="true">→</span>
+                    <div class="roadmap-step">
+                        <span>03</span>
+                        <b>Calibrated model</b>
+                        <small>On labelled samples</small>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="how-section" id="how-it-works">
             <div>
                 <p class="eyebrow">THE IDEA</p>
@@ -146,6 +223,7 @@
     <footer class="site-footer">
         <span>फेकSMELL / 2026</span>
         <span>Designed for curious noses.</span>
+        <span>Data is stored only in your browser.</span>
     </footer>
     <script src="script.js"></script>
 </body>

@@ -2,7 +2,11 @@
 
 > **Smell, translated.**
 
-फेकsmell is a hackathon-ready electronic-nose experience that turns invisible scent signals into a visual, understandable profile. The current prototype runs entirely in the browser with a deterministic sensor simulation, so it is reliable to demo without special hardware.
+**Problem:** Important changes in smell can be difficult to notice, describe, or investigate early.
+
+**Who it helps:** Kitchens and supply chains, homes and hostels, classrooms and workplaces, and people with anosmia.
+
+फेकsmell is a hackathon-ready electronic-nose experience for a practical problem: smell can carry early clues about spoiled food, smoke, indoor air, and scent description for people with anosmia. It turns invisible scent signals into a visual, understandable profile. The current prototype runs entirely in the browser with a deterministic sensor simulation, so it is reliable to demo without special hardware and makes no medical or safety-certification claims.
 
 ## Why it matters
 
@@ -18,12 +22,23 @@ For the hackathon demo, the first step is simulated so the experience works on a
 
 Try the deployed prototype at <https://rudragarg-ds.github.io/fakekhushbu/>.
 
+## Screenshots
+
+These placeholders can be replaced with current captures of the home and result states:
+
+![फेकsmell home screen](docs/screenshot-home.png)
+
+![फेकsmell result screen](docs/screenshot-result.png)
+
 ## Demo features
 
 - One-click scan animation with clear sensor status feedback.
 - Live canvas trace that settles toward all six simulated sensor readings.
-- Four sample profiles: roasted coffee, fresh citrus, after the rain, and crushed mint.
-- Confidence score plus four interpretable scent dimensions.
+- Seven sample profiles, including spoiled milk, smoke, and rubbing alcohol.
+- Uncertainty handling that shows the top three candidates when the signal is ambiguous.
+- Mystery samples that reveal whether the predicted class matches the hidden source.
+- A low/medium/high noise control and a 200-scan confusion-matrix benchmark labelled as simulated data.
+- Optional Web Serial input for six-channel Arduino/ESP32 CSV readings at 9600 baud.
 - Six-channel simulated readings with seeded Gaussian noise and cosine-similarity softmax classification.
 - Recent scan history stored in `localStorage`.
 - Responsive layout for laptops, tablets, and phones.
@@ -48,14 +63,13 @@ Open <http://localhost:8000>.
 
 Using a local server is recommended when testing browser integrations or deploying from a development environment.
 
-## Suggested hackathon demo script
+## 60-second demo script
 
-1. Start on the hero section and explain that the product translates scent signals into language.
-2. Choose **Fresh citrus** or **After the rain** to show that profiles change.
-3. Click **Start a scan** and point out the live status transition from waiting to reading sensor layers to scan complete.
-4. Explain the confidence score and the four interpretable dimensions.
-5. Run a second scan and show the **Your scent trail** history.
-6. Close with the hardware bridge: replace the sample selector with readings from an electronic-nose array.
+1. **0–10s:** Introduce the problem: smell can carry clues about spoilage, smoke, indoor air, and accessibility.
+2. **10–25s:** Choose **Fresh citrus**, click **Start a scan**, and point out the six-channel trace, confidence, and scent notes.
+3. **25–40s:** Click **Mystery sample** and reveal the hidden actual class with the correct/wrong badge.
+4. **40–52s:** Move **Noise level** to High and run **Run 200 test scans** to show the simulated accuracy and confusion matrix.
+5. **52–60s:** Explain that the next step is a real ESP32 sensor array and labelled calibration data, not a certified safety or medical device.
 
 ## Project structure
 
@@ -71,15 +85,32 @@ README.md    Product story, setup, demo flow, and integration notes
 Browsers cannot smell without an external sensor. A production version would replace the sample selection in `script.js` with an adapter that:
 
 1. Reads a normalized array of sensor values from an Arduino, ESP32, or backend API.
-2. Maps those values to the same four-dimensional profile shape used by the demo.
-3. Sends the profile through the existing `renderResult()` flow.
-4. Keeps confidence scores calibrated against a labelled training set.
+2. Maps those values to the same six-channel profile shape used by the demo.
+3. Sends the profile through the existing result-rendering flow.
+4. Keeps confidence scores and uncertainty thresholds calibrated against a labelled training set.
 
 Possible next steps are Web Serial for a USB-connected microcontroller, Web Bluetooth for a supported device, or a small server endpoint for model inference. The current UI intentionally keeps this boundary clean so a hardware integration does not require a redesign.
 
-### Classification pipeline
+### Optional Web Serial sensor
 
-Each simulated reading contains normalized values for Alcohol/VOC, Ammonia, Sulfur, Smoke/CO, Humidity, and Terpenes. `simulateReading()` adds seeded Gaussian noise and a small baseline drift to the selected fingerprint. `classify()` compares that vector with every reference fingerprint using cosine similarity, then converts the similarities into probabilities with a temperature-scaled softmax. The seed is saved with each history entry so a scan can be reproduced.
+On a Chromium-based browser with Web Serial support, the **Connect sensor** button appears when the page is served over a secure context. Choose a USB serial device that sends six newline-delimited CSV values at 9600 baud, for example:
+
+```text
+412,88,31,16,520,740
+```
+
+Values in the `0..1023` analog range are normalized to `0..1` before entering the existing classifier. The example sender is [`docs/esp32_sketch.ino`](./docs/esp32_sketch.ino). If the port disconnects or returns an error, the app returns to the simulated sensor.
+
+## How the classifier works
+
+1. **6-channel simulated array:** Each reading contains normalized Alcohol/VOC, Ammonia, Sulfur, Smoke/CO, Humidity, and Terpenes values. `simulateReading()` adds seeded Gaussian noise and a small baseline drift.
+2. **Fingerprint comparison:** `classify()` compares the simulated vector with every reference fingerprint using cosine similarity.
+3. **Softmax confidence:** Similarities become probabilities through a temperature-scaled softmax.
+4. **Uncertainty threshold:** If the top probability is below 55% or its lead is below 12 percentage points, the UI says **Not sure** and shows the top three candidates.
+
+### Measured accuracy (simulated)
+
+The **Run 200 test scans** button measures accuracy against the app's own simulated fingerprints at the selected noise level. The result and confusion matrix are a benchmark of simulated data only, not real-world sensor accuracy.
 
 ## Important limitation
 
@@ -87,4 +118,4 @@ This repository is a working **front-end prototype**, not a chemical measurement
 
 ## License
 
-No license has been selected yet. Add one before distributing the project outside the hackathon team.
+MIT. See [`LICENSE`](./LICENSE).
