@@ -14,6 +14,10 @@ People understand smells intuitively, but machines usually expose them as raw vo
 
 For the hackathon demo, the first step is simulated so the experience works on any laptop. The UI and data model are ready for a real sensor adapter later.
 
+## Live demo
+
+Try the deployed prototype at <https://rudragarg-ds.github.io/fakekhushbu/>.
+
 ## Demo features
 
 - One-click scan animation with clear sensor status feedback.
